@@ -59,15 +59,25 @@ class TCPHandler(BaseRequestHandler):
                 Example: {"command": "is_over"}
 
         """
-
-
-        self.data = bytes.decode(self.request.recv(1024).strip(), 'utf-8')
+        s = ""
+        while not last_received:
+            b = s.recv(1024)
+            if b == b'':
+                last_received = True
+            else:
+                chunk = str(b, "utf-8")
+                received += chunk
+        
+        self.data = bytes.decode(s, 'utf-8')
         self.data = json.loads(self.data)
         logger.debug(f"Received request")
         logger.debug(f"Received data: {self.data}")
         
         if self.data['command'] == 'add_team':
             try:
+                if len(self.data['hikers']) > 4:
+                    logger.warning(f"Too many hikers for team {self.data['team']}, only first four will be added")
+                    self.data['hikers'] = self.data['hikers'][:4]
                 ans = self.server.base_station.add_team(self.data['team'], self.data['hikers'])
             except RuntimeError as e:
                 ans = False
