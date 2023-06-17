@@ -124,6 +124,12 @@ class BaseStation:
                 msg = 'The hiker ' + hiker + ' of the team ' + team + ' did not receive speed.'
             elif 'direction' not in directions[hiker]:
                 msg = 'The hiker ' + hiker + ' of the team ' + team + ' did not receive direction.'
+            else:
+                try:
+                    float(directions[hiker]['speed'])
+                    float(directions[hiker]['direction'])
+                except TypeError:
+                    msg = 'The hiker ' + hiker + ' of the team ' + team + ' recieved None as directives.'
             
             if msg:
                 logger.warn(msg)
