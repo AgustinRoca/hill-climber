@@ -195,7 +195,8 @@ class Dashboard:
         self.root.quit()
 
 if __name__ == "__main__":
-    # client = MountainClient('himalaya.local.', 8888)
-    client = MountainClient('localhost', 8080)
+    # client = MountainClient('10.42.0.1', 8888)
+    client = MountainClient('172.16.0.219', 8888)
+    # client = MountainClient('localhost', 8080)
     d = Dashboard(client)
     d.start()
