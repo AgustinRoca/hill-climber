@@ -6,6 +6,13 @@ from typing import Tuple
 from communication.server.mountain.abstract.circularbase_mountain import CircularBaseMountain
 
 class AckleyMountain(CircularBaseMountain):
+    """Mountain modeled after the Ackley function.
+    Args:
+        visual_radius (float): the radius of the visual area. If the hiker is at least this far from the flag, it will
+            be considered that he has reached the flag.
+        base_radius (float): the radius of the base of the mountain. If the hiker goes outside this radius, he will be
+            considered out of bounds and disqualified.
+    """
     def __init__(self, visual_radius: float, base_radius: float) -> None:
         flag = (0,0)
         super().__init__(

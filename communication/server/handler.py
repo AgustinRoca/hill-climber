@@ -58,26 +58,32 @@ class TCPHandler(BaseRequestHandler):
                 Returns: True if the competition is over, False otherwise.
                 Example: {"command": "is_over"}
 
+            - is_registering_teams: returns True if the competition is registering teams.
+                Args: The JSON does not need any other field.
+                Returns: True if the competition is registering teams, False otherwise.
+                Example: {"command": "is_registering_teams"}
+
+            - get_mountain: returns the mountain information.
+                Args: The JSON does not need any other field.
+                Returns: A JSON with the following fields:
+                    {"mountain": (str)}
+                Example: {"command": "get_mountain"}
+
         """
-        s = ""
-        while not last_received:
-            b = s.recv(1024)
-            if b == b'':
-                last_received = True
-            else:
-                chunk = str(b, "utf-8")
-                received += chunk
+
+
+        self.data = bytes.decode(self.request.recv(1024).strip(), 'utf-8')
+        try:
+            self.data = json.loads(self.data)
+        except:
+            logger.warn('Invalid request. It may be too long. It will be ignored.')
+            return 'NACK'
         
-        self.data = bytes.decode(s, 'utf-8')
-        self.data = json.loads(self.data)
         logger.debug(f"Received request")
         logger.debug(f"Received data: {self.data}")
         
         if self.data['command'] == 'add_team':
             try:
-                if len(self.data['hikers']) > 4:
-                    logger.warning(f"Too many hikers for team {self.data['team']}, only first four will be added")
-                    self.data['hikers'] = self.data['hikers'][:4]
                 ans = self.server.base_station.add_team(self.data['team'], self.data['hikers'])
             except RuntimeError as e:
                 ans = False
@@ -97,8 +103,8 @@ class TCPHandler(BaseRequestHandler):
             ans = not self.server.base_station.is_competition_ongoing()
         elif self.data['command'] == 'is_registering_teams':
             ans = self.server.base_station.is_registering_teams()
-        elif self.data['command'] == 'mountain_info':
-            ans = self.server.base_station.get_mountain_info()
+        elif self.data['command'] == 'get_mountain':
+            ans = self.server.base_station.get_mountain()
         else:
             logger.debug(f"Unknown command: {self.data['command']}")
             ans = 'NACK'

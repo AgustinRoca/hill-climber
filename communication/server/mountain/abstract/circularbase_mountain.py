@@ -59,8 +59,6 @@ class CircularBaseMountain(Mountain):
     def is_out_of_bounds(self, x, y):
         return x**2 + y**2 > self.base_radius**2
     
-    import math
-
     def rotate_coordinates(self, x, y, x0, y0, angle_rad):
         # Translate the coordinates by -x0 and -y0
         translated_x = x - x0

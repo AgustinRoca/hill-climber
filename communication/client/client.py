@@ -157,17 +157,20 @@ class MountainClient:
         ans = self._socket_send(data)
         return ans == 'True'
     
-    def get_mountain_info(self) -> dict:
-        """Sends the mountain_info command to the MountainServer.
+    def get_mountain(self) -> str:
+        """Sends the get_mountain command to the MountainServer.
 
         Returns:
-            dict: The information of the mountain.
+            str: The name of the mountain.
+
+        Example:
+            >>> client.get_mountain()
+            'EasyMountain'
         """
 
-        data = {'command': 'mountain_info'}
+        data = {'command': 'get_mountain'}
         data = json.dumps(data) 
         ans = self._socket_send(data)
-        ans = json.loads(ans)
         return ans
 
     def _socket_send(self, data: str) -> str:
@@ -205,4 +208,5 @@ class MountainClient:
             s.close()
 
         return received
+
 
