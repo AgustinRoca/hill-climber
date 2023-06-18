@@ -12,13 +12,14 @@ class Hiker:
         self.summit = False
         self._next_direction_f = function
         self.current_direction = 0
-        self.random_point = None if function != spiral else (0, 0)
+        self.random_point = None
         self.prev_z = 0
         self.speed = 50
         self.walk_rad = 50
+        self.times_down = 0
+        self.first_run = True
 
     def set_position(self, x, y, z, dx, dy, summit):
-        self.prev_z = self.z
         self.x = x
         self.y = y
         self.z = z
@@ -76,25 +77,28 @@ def local_max_with_reset(hiker: Hiker) -> float:
     if hiker.random_point:
         distance_from_random_point = math.sqrt((hiker.random_point[0] - hiker.x)**2 + (hiker.random_point[1] - hiker.y)**2)
         if distance_from_random_point < 50:
-            hiker.random_point = hiker.new_random_point()
-        else:
             hiker.random_point = None
+            hiker.prev_z = 0
             return local_max(hiker)
     elif hiker.prev_z > hiker.z or hiker.will_be_out_of_bounds(local_max(hiker)):
         hiker.random_point = hiker.new_random_point()
     else:
+        hiker.prev_z = hiker.z
         return local_max(hiker)
     return math.atan2(hiker.random_point[1] - hiker.y, hiker.random_point[0] - hiker.x)
 
 def spiral(hiker: Hiker) -> float:
+    if hiker.first_run:
+        hiker.first_run = False
+        hiker.random_point = (0,0)
     if hiker.random_point:
         distance_from_random_point = math.sqrt((hiker.random_point[0] - hiker.x)**2 + (hiker.random_point[1] - hiker.y)**2)
         if distance_from_random_point < 50:
             hiker.random_point = None
-            return 0
+            hiker.times_down = 1
+            return -math.pi/2
         else:
             return math.atan2(hiker.random_point[1] - hiker.y, hiker.random_point[0] - hiker.x)
-    new_dir = hiker.current_direction + 15/(hiker.walk_rad)
-    new_x, new_y = hiker.new_xy(new_dir)
-    hiker.walk_rad = math.sqrt(new_x**2 + new_y**2)
+    new_dir = hiker.current_direction + math.sqrt(1/(500*hiker.walk_rad))
+    hiker.walk_rad += 0.1
     return new_dir
