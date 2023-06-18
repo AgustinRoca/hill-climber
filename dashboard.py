@@ -3,6 +3,7 @@ import threading
 from tkinter import *
 import matplotlib
 matplotlib.use("TkAgg")
+import signal
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
@@ -13,8 +14,13 @@ from communication.client.client import MountainClient
 
 class Dashboard:
     def __init__(self, client: MountainClient):
+        self.quitting = False
         self.root = Tk()
         self.root.title("Dashboard")
+        signal.signal(signal.SIGINT, lambda x, y: self.stop())
+        tk_check = lambda: self.root.after(500, tk_check)
+        self.root.after(500, tk_check)
+        self.root.bind_all("<Control-c>", lambda e: self.stop())
         
         self.client = client
         self.data = client.get_data()
@@ -27,7 +33,7 @@ class Dashboard:
         
         self.frames.append(LabelFrame(self.root, text="Heights of hikers through time", padx=5, pady=5))
         self.frames[0].grid(row=0, column=0, padx=10, pady=10)
-        self.plot_heights(self.frames[0])
+        # self.plot_heights(self.frames[0])
         
         self.frames.append(LabelFrame(self.root, text="Skyview of hikers trajectories", padx=5, pady=5))
         self.frames[1].grid(row=0, column=1, padx=10, pady=10)
@@ -39,7 +45,9 @@ class Dashboard:
 
         self.frames.append(LabelFrame(self.root, text="Radar", padx=5, pady=5))
         self.frames[3].grid(row=1, column=1, padx=10, pady=10)
-        self.plot_radar(self.frames[3])      
+        self.plot_radar(self.frames[3])
+
+        self.root.protocol("WM_DELETE_WINDOW", self.stop)
 
     def plot_heights(self, frame):
         fig, ax = plt.subplots(figsize=self.figsize)
@@ -74,23 +82,26 @@ class Dashboard:
         plt.subplots_adjust(left=0.2, right=0.75)
         ax.set_xlim(-self.mountain_radius, self.mountain_radius)
         ax.set_ylim(-self.mountain_radius, self.mountain_radius)
-        team = list(self.data.keys())[0]
-        lines = {hiker: ax.plot(0,0, label=hiker)[0] for hiker in self.data[team]}
+        lines = {team :{hiker: ax.plot(0,0, label=f'{team} - {hiker}')[0] for hiker in self.data[team]} for team in self.data}
         circle = plt.Circle((0, 0), self.mountain_radius, color='k', ls='--', fill=False)
         ax.add_patch(circle)
         ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
         
-        x_data = {hiker: [] for hiker in self.data[team]}
-        y_data = {hiker: [] for hiker in self.data[team]}
+        x_data = {team: {hiker: [] for hiker in self.data[team]} for team in self.data}
+        y_data = {team: {hiker: [] for hiker in self.data[team]} for team in self.data}
 
         def animate(i):
-            for hiker in self.data[team]:
-                hiker_data = self.data[team][hiker]
-                x_data[hiker].append(hiker_data['x'])
-                y_data[hiker].append(hiker_data['y'])
-                lines[hiker].set_ydata(y_data[hiker])
-                lines[hiker].set_xdata(x_data[hiker])
-            return lines.values()
+            vals = []
+            for team in self.data:
+                for hiker in self.data[team]:
+                    hiker_data = self.data[team][hiker]
+                    x_data[team][hiker].append(hiker_data['x'])
+                    y_data[team][hiker].append(hiker_data['y'])
+                    lines[team][hiker].set_xdata(x_data[team][hiker])
+                    lines[team][hiker].set_ydata(y_data[team][hiker])
+                    vals.append(lines[team][hiker])
+            return vals
+
 
         self.animations.append(FuncAnimation(fig, func=animate, interval=self.time_step, blit=True))
 
@@ -148,30 +159,30 @@ class Dashboard:
         plt.subplots_adjust(left=0.2, right=0.75)
         ax.set_xlim(-self.mountain_radius, self.mountain_radius)
         ax.set_ylim(-self.mountain_radius, self.mountain_radius)
-        team = list(self.data.keys())[0]
-        xs = []
-        ys = []
-        for hiker in self.data[team]:
-            x = self.data[team][hiker]['x']
-            y = self.data[team][hiker]['y']
-            xs.append(x)
-            ys.append(y)
-        scats = {team: ax.scatter(xs, ys, s=5, label=team)}
-        circle = plt.Circle((0, 0), self.mountain_radius, color='k', ls='--', fill=False)
-        ax.add_patch(circle)
-        ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-
-        def update(i):
+        scats = {}
+        for team in self.data:
             xs = []
             ys = []
-            labels = []
             for hiker in self.data[team]:
                 x = self.data[team][hiker]['x']
                 y = self.data[team][hiker]['y']
                 xs.append(x)
                 ys.append(y)
-                labels.append(hiker)
-            scats[team].set_offsets(list(zip(xs,ys)))
+            scats[team] = ax.scatter(xs, ys, s=5, label=team)
+        circle = plt.Circle((0, 0), self.mountain_radius, color='k', ls='--', fill=False)
+        ax.add_patch(circle)
+        ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+
+        def update(i):
+            for team in self.data:
+                xs = []
+                ys = []
+                for hiker in self.data[team]:
+                    x = self.data[team][hiker]['x']
+                    y = self.data[team][hiker]['y']
+                    xs.append(x)
+                    ys.append(y)
+                scats[team].set_offsets(list(zip(xs,ys)))
             return scats.values()
 
         self.animations.append(FuncAnimation(fig, update, interval=self.time_step, blit=True))
@@ -187,11 +198,12 @@ class Dashboard:
         self.root.mainloop()  
 
     def update_data(self):
-        while not self.client.is_over():
+        while not self.client.is_over() and not self.quitting:
             self.data = self.client.get_data()
             time.sleep(self.time_step/1000)
 
     def stop(self):
+        self.quitting = True
         self.root.quit()
 
 if __name__ == "__main__":
