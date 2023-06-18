@@ -8,15 +8,15 @@ def main():
     
     
     # client = MountainClient('10.42.0.1', 8888)
-    client = MountainClient('172.16.0.219', 8888)
-    # client = MountainClient('localhost', 8080)
+    # client = MountainClient('172.16.0.219', 8888)
+    client = MountainClient('localhost', 8080)
     teams = {}
-    for i in range(20):
+    for i in range(10):
         hikers = []
         hikers.append(Hiker('Agus1', local_max_with_reset))
         hikers.append(Hiker('Agus2', local_max_with_reset))
         hikers.append(Hiker('Agus3', towards_random_point))
-        hikers.append(Hiker('Agus4', random_circles))
+        hikers.append(Hiker('Agus4', spiral))
         teams[f'LINAR{i}'] = Team(f'LINAR{i}', hikers)
 
         if not client.add_team(f'LINAR{i}', [hiker for hiker in teams[f'LINAR{i}'].members]):
@@ -48,11 +48,6 @@ def main():
                     next_iteration[hiker.name] = {}
                     next_iteration[hiker.name]['direction'] = hiker.next_direction()
                     next_iteration[hiker.name]['speed'] = 50
-                if not next_iteration[hiker.name]['direction'] or not next_iteration[hiker.name]['speed']:
-                    print(hiker.name)
-                    print(hiker.prev_z, hiker.random_point)
-                    print(next_iteration[hiker.name]['direction'], next_iteration[hiker.name]['speed'])
-                    print(hiker_data)
             a = client.next_iteration(team_name, next_iteration)
         time.sleep(0.01)
     print('Competition over.')

@@ -15,9 +15,15 @@ from communication.util.logger import logger
 
 def main():
     i = 0
+    thread = None
     while True:
+        if thread:
+            thread.join()
         print('Ctrl + C now or server will restart in 5 seconds')
-        time.sleep(5)
+        try:
+            time.sleep(5)
+        except KeyboardInterrupt:
+            break
 
         ip = 'localhost'
         port = 8080
@@ -28,6 +34,7 @@ def main():
 
         mountain = mountains[i % len(mountains)](visual_radius, base_radius)
         logger.info(f"Current mountain: {str(mountain).split(' ')[0].split('.')[-1]}")
+        logger.info(f"Flag: {mountain.flag}")
         server = MountainServer(mountain, (14000,14000), 50, 'localhost', 8080)
         # graph_mountain(mountain)
         thread.start()
@@ -36,9 +43,16 @@ def main():
 
 def finish_registration(ip, port):
     client = MountainClient(ip, port)
+    time.sleep(0.1)
     logger.info('In 30 seconds, registration will be finished')
-    time.sleep(30)
-    client.finish_registration()
+    start_time = time.time()
+    try:
+        while time.time() - start_time < 30 and client.is_registering_teams():
+            time.sleep(0.01)
+        if client.is_registering_teams():
+            client.finish_registration()
+    except (ConnectionRefusedError, ConnectionResetError):
+        return
 
 def graph_mountain(mountain: Mountain):
     from matplotlib import cbook

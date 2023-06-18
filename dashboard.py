@@ -198,9 +198,12 @@ class Dashboard:
         self.root.mainloop()  
 
     def update_data(self):
-        while not self.client.is_over() and not self.quitting:
-            self.data = self.client.get_data()
-            time.sleep(self.time_step/1000)
+        try:
+            while not self.client.is_over() and not self.quitting:
+                self.data = self.client.get_data()
+                time.sleep(self.time_step/1000)
+        except ConnectionRefusedError:
+            pass
 
     def stop(self):
         self.quitting = True
@@ -208,7 +211,7 @@ class Dashboard:
 
 if __name__ == "__main__":
     # client = MountainClient('10.42.0.1', 8888)
-    client = MountainClient('172.16.0.219', 8888)
-    # client = MountainClient('localhost', 8080)
+    # client = MountainClient('172.16.0.219', 8888)
+    client = MountainClient('localhost', 8080)
     d = Dashboard(client)
     d.start()
