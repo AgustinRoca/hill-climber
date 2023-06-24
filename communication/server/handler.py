@@ -58,17 +58,6 @@ class TCPHandler(BaseRequestHandler):
                 Returns: True if the competition is over, False otherwise.
                 Example: {"command": "is_over"}
 
-            - is_registering_teams: returns True if the competition is registering teams.
-                Args: The JSON does not need any other field.
-                Returns: True if the competition is registering teams, False otherwise.
-                Example: {"command": "is_registering_teams"}
-
-            - get_mountain: returns the mountain information.
-                Args: The JSON does not need any other field.
-                Returns: A JSON with the following fields:
-                    {"mountain": (str)}
-                Example: {"command": "get_mountain"}
-
         """
 
 
@@ -78,7 +67,7 @@ class TCPHandler(BaseRequestHandler):
         except:
             logger.warn('Invalid request. It may be too long. It will be ignored.')
             return 'NACK'
-        
+
         logger.debug(f"Received request")
         logger.debug(f"Received data: {self.data}")
         
@@ -89,13 +78,22 @@ class TCPHandler(BaseRequestHandler):
                 ans = False
         elif self.data['command'] == 'end_registration':
             try:
+                logger.warning('The server will close the registration team automatically, don\'t do it manually in your code')
+                # ans = self.server.base_station.finish_team_registration()
+                ans = False
+            except RuntimeError as e:
+                ans = False
+        elif self.data['command'] == 'end_registration_2':
+            try:
                 ans = self.server.base_station.finish_team_registration()
             except RuntimeError as e:
                 ans = False
         elif self.data['command'] == 'walk':
             try:
                 ans = self.server.base_station.register_team_directions(self.data['team'], self.data['directions'])
-            except (RuntimeError, ValueError) as e:
+            except RuntimeError:
+                ans = False
+            except ValueError:
                 ans = False
         elif self.data['command'] == 'get_data':
             ans = self.server.base_station.get_data()

@@ -1,4 +1,5 @@
 import logging
+import logging.handlers
 from communication.util.logger_formatter import CustomFormatter
 
 logger_level = logging.INFO # Change to logging.DEBUG to see debug messages
@@ -7,7 +8,10 @@ logger_level = logging.INFO # Change to logging.DEBUG to see debug messages
 logger = logging.getLogger('logger')
 if len(logger.handlers) == 0:
     logger.setLevel(logger_level)
-    sh = logging.StreamHandler()
+    # sh = logging.StreamHandler()
+    sh = logging.handlers.SysLogHandler(address = '/dev/log')
     sh.setLevel(logger_level)
     sh.setFormatter(CustomFormatter())
     logger.addHandler(sh)
+    logger.propagate = 0
+

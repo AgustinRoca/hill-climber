@@ -21,6 +21,8 @@ class BaseStation:
         self.teams = {}
         self.next_directions = {}
         self.minutes_passed = 0
+        self.wanting_to_write = 0
+        self.file_lock = threading.Lock()
 
     def add_team(self, team: str, hikers: List[str]) -> bool:
         """
@@ -53,7 +55,7 @@ class BaseStation:
                 'inclinacion_y': inclination[1], 
                 'cima': False
             }
-        logger.info('Team ' + team + ' added to the competition. Hikers: ' + str(hikers) + '.')
+        logger.info('Team \'' + team + '\' added to the competition. Hikers: ' + str(hikers) + '.')
         return True
     
     def finish_team_registration(self) -> bool:
@@ -202,6 +204,9 @@ class BaseStation:
             else:
                 logger.info(f'Timeout ({self.TIMEOUT} s) reached.')
             self._move_hikers()
+        while self.wanting_to_write > 0:
+            logger.info('Writing in leaderboard. Will close server when finished.')
+            time.sleep(0.1)
         logger.info('Closing server.')
         time.sleep(5)
         self.server.shutdown()
@@ -223,8 +228,11 @@ class BaseStation:
                             self.next_directions[team][hiker]['speed']
                         )
                         if self.teams[team][hiker]['cima']:
-                            logger.info('Hiker ' + hiker + ' of team ' + team + ' reached the summit. Time taken: ' + \
+                            logger.info('Hiker \'' + hiker + '\' of team \'' + team + '\' reached the summit. Time taken: ' + \
                                     str(self.minutes_passed) + ' minutes.')
+                            self.wanting_to_write += 1
+                            t = threading.Thread(target=self._add_score_leaderboard, args=(team, hiker, self.minutes_passed, self.get_mountain()))
+                            t.start()
 
             self._disqualify_missing_hikers()
             self.next_directions = {}
@@ -240,7 +248,44 @@ class BaseStation:
 
                 logger.info(f'{self.minutes_passed} minutes of competition passed. Remaining hikers: ' + \
                             f'{remaining_hikers}.')
+
             self.timer = time.time()
+
+    def _add_score_leaderboard(self, team, hiker, mins, mountain):
+        self.file_lock.acquire()
+        self.writing = True
+        scores = []
+        with open(f'leaderboards/{mountain}.txt', 'r') as f:
+            for _ in range(4):
+                f.readline()
+            for line in f:
+                _, team_l, hiker_l, mins_l = line.strip().split(' ')
+                mins_l = int(mins_l)
+                scores.append((team_l, hiker_l, mins_l))
+
+        i = 0
+        located = False
+        while i < len(scores) and not located:
+            if mins < scores[i][2]:
+                scores.insert(i, (team, hiker, mins))
+                located = True
+            i+=1
+        if not located:
+            scores.append((team, hiker, mins))
+        scores = scores[:20]
+
+        with open(f'leaderboards/{mountain}.txt', 'w') as f:
+            s = f'{mountain} Leaderboard\n'
+            s += '--------------------------------------\n'
+            s += 'N°         TEAM        HIKER     MINS \n'
+            s += '--------------------------------------\n'
+            for i, (team_l, hiker_l, mins_l) in enumerate(scores):
+                team_l = ''.join(team_l.split(' '))
+                hiker_l = ''.join(hiker_l.split(' '))
+                s += f'{i+1}. {team_l} {hiker_l} {mins_l}\n'
+            f.write(s)
+        self.wanting_to_write -= 1
+        self.file_lock.release()
 
     def _disqualify_missing_hikers(self) -> None:
         """
@@ -251,7 +296,7 @@ class BaseStation:
             if not self._are_all_team_hikers_in_summit(team):
                 if team not in self.next_directions:
                     del self.teams[team]
-                    logger.info('Team ' + team + ' was disqualified because it did not send directions.')
+                    logger.info('Team \'' + team + '\' was disqualified because it did not send directions.')
                 else:
                     for hiker in list(self.teams[team].keys()):
                         self._disqualify_hiker_if_missing(team, hiker)
@@ -271,14 +316,14 @@ class BaseStation:
             if (hiker not in self.next_directions[team]):
                 logger.info(self.next_directions)
                 del self.teams[team][hiker]
-                logger.info('Hiker ' + hiker + ' of team ' + team + ' was disqualified because it did not send directions.')
+                logger.info('Hiker \'' + hiker + '\' of team \'' + team + '\' was disqualified because it did not send directions.')
             elif self._is_out_of_bounds(self.teams[team][hiker]):
                 del self.teams[team][hiker]
-                logger.info('Hiker ' + hiker + ' of team ' + team + ' was disqualified because it is out of bounds.')
+                logger.info('Hiker \'' + hiker + '\' of team \'' + team + '\' was disqualified because it is out of bounds.')
 
             if len(self.teams[team]) == 0:
                 del self.teams[team]
-                logger.info('Team ' + team + ' was disqualified because it has no hikers left.')
+                logger.info('Team \'' + team + '\' was disqualified because it has no hikers left.')
            
     def _is_out_of_bounds(self, hiker: dict) -> bool:
         """Check if a hiker is out of bounds.
@@ -305,3 +350,4 @@ class BaseStation:
                 'cima': summit
             }
         return data
+

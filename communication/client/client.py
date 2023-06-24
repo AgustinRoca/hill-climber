@@ -79,6 +79,23 @@ class MountainClient:
         ans = self._socket_send(data)
         return ans == 'True'
     
+    def finish_registration2(self) -> bool:
+        """Sends the end_registration command to the MountainServer.
+
+        Returns:
+            bool: True if the registration was finished successfully, False otherwise.
+        
+        Example:
+            >>> client.add_team('team1', ['hiker1', 'hiker2'])
+            >>> client.finish_registration()
+            True
+        """
+
+        data = {'command': 'end_registration_2'}
+        data = json.dumps(data) 
+        ans = self._socket_send(data)
+        return ans == 'True'
+    
     def get_data(self) -> dict[str, dict[str, dict[str, float]]]:
         """Sends the get_data command to the MountainServer.
 
@@ -158,16 +175,6 @@ class MountainClient:
         return ans == 'True'
     
     def get_mountain(self) -> str:
-        """Sends the get_mountain command to the MountainServer.
-
-        Returns:
-            str: The name of the mountain.
-
-        Example:
-            >>> client.get_mountain()
-            'EasyMountain'
-        """
-
         data = {'command': 'get_mountain'}
         data = json.dumps(data) 
         ans = self._socket_send(data)

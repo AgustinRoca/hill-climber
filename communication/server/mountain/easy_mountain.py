@@ -5,7 +5,7 @@ from typing import Tuple
 from communication.server.mountain.abstract.circularbase_mountain import CircularBaseMountain
 
 class EasyMountain(CircularBaseMountain):
-    """Mountain modeled after the Booth function.
+    """A simple mountain modeled after the Booth function. Easiest mountain out of the three examples.
     Args:
         visual_radius (float): the radius of the visual area. If the hiker is at least this far from the flag, it will
             be considered that he has reached the flag.
